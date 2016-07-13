@@ -14,17 +14,18 @@ def import_text():
     text = text.split('\r\n')
     del text[-1]
     for linenum in range(len(text)):
-        if linenum == 0 or linenum == len(text)-1:
-            continue
-        text[linenum] = text[linenum].replace('|', ' ')
-        text[linenum] = text[linenum].replace('W', ' ')
-        text[linenum] = text[linenum].replace('-', ' ')
-        if linenum % 2 == 1:
-            text[linenum] = '|{}|'.format(text[linenum][1:-1])
+        if linenum != 0 and linenum != len(text)-1: #ignore first and last lines
+            text[linenum] = text[linenum].replace('|', ' ')
+            text[linenum] = text[linenum].replace('W', ' ')
+            text[linenum] = text[linenum].replace('-', ' ')
+            if linenum % 2 == 1:
+                text[linenum] = '|{}|'.format(text[linenum][1:-1])
+        text[linenum] = list(text[linenum])
     return text
 
 def main():
-    board = import_text
+    board = import_text()
+
 
 if __name__ == '__main__':
     main()
