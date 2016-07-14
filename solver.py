@@ -30,6 +30,7 @@ def initial_assignment(board):
     for rownum in range(1, len(board)-1):
         for colnum in range(1, len(board[rownum])-1):
             if board[rownum][colnum][0] == 'o':
+                dotlist.append('{}/{}'.format(rownum, colnum))
                 if rownum%2==0 and colnum%2==0:
                     board[rownum-1][colnum-1] = '{}/{}'.format(rownum, colnum)
                     board[rownum-1][colnum+1] = '{}/{}'.format(rownum, colnum)
@@ -147,8 +148,57 @@ def between_galaxies():
                     board[rownum][colnum+1] = '|'
     return board
 
+def check_parents():
+    '''
+    Check every cell without a known parent. Check all potential dots for the
+    potential to be a parent. If there is only one option, label the cell.
+    '''
+    for rownum in range(1, len(board)-1, 2):
+        for colnum in range(1, len(board[rownum])-1, 2):
+            if board[rownum][colnum] == '     ':
+                continue
+
+def curate_dotlist(prevlist):
+    '''
+    Remove completed dots from dotlist.
+    1. Iterate through dotlist.
+    2. Iterate through each cell that belongs to that dot.
+    3. Check that each side of that cell has either a border or another cell
+       with the same parent.
+    4. If any cell does not meet those conditions, move to the next dot.
+    '''
+    dotlist = []
+    for dot in prevlist:
+        for rownum in range(1, len(board)-1, 2):
+            for colnum in range(1, len(board[rownum])-1, 2):
+                if dot not in board[rownum][colnum] and dot != '{}/{}'.format(rownum, colnum):
+                    continue
+                if '-' not in board[rownum-1][colnum]:
+                    if dot not in board[rownum-2][colnum]:
+                        if dot not in dotlist:
+                            dotlist.append(dot)
+                        continue
+                if '-' not in board[rownum+1][colnum]:
+                    if dot not in board[rownum+2][colnum]:
+                        if dot not in dotlist:
+                            dotlist.append(dot)
+                        continue
+                if '|' not in board[rownum][colnum-1]:
+                    if dot not in board[rownum][colnum-2]:
+                        if dot not in dotlist:
+                            dotlist.append(dot)
+                        continue
+                if '|' not in board[rownum][colnum+1]:
+                    if dot not in board[rownum][colnum+2]:
+                        if dot not in dotlist:
+                            dotlist.append(dot)
+                        continue
+    return dotlist
+
 def main():
     global board
+    global dotlist
+    dotlist = []
     board = import_text()
     print_table(board)
     board = initial_assignment(board)
@@ -157,6 +207,9 @@ def main():
     print_table(board)
     board = mirror_borders()
     print_table(board)
+    print(dotlist)
+    dotlist = curate_dotlist(dotlist)
+    print(dotlist)
 
 if __name__ == '__main__':
     main()
