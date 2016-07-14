@@ -30,7 +30,6 @@ def initial_assignment(board):
     for rownum in range(1, len(board)-1):
         for colnum in range(1, len(board[rownum])-1):
             if board[rownum][colnum][0] == 'o':
-                print('{}/{}'.format(rownum, colnum))
                 if rownum%2==0 and colnum%2==0:
                     board[rownum-1][colnum-1] = '{}/{}'.format(rownum, colnum)
                     board[rownum-1][colnum+1] = '{}/{}'.format(rownum, colnum)
@@ -74,10 +73,16 @@ def print_table(table):
     return
 
 def get_twin(row, col):
-    [dotrow, dotcol] = board[row][col].split('/')
+    '''
+    Returns a tuple of coordinates pointing to the 'twin' of the cell described
+    by the input coordinates.
+    '''
+    if '/' in board[row][col]:
+        [dotrow, dotcol] = board[row][col].split('/')
+    else:
+        [dotrow, dotcol] = [row, col]
     dotrow = int(dotrow)
     dotcol = int(dotcol)
-    print('dot: {},{}'.format(dotrow, dotcol))
     if int(dotrow) > row:
         twinrow = (dotrow-row)+dotrow
     elif int(dotrow) < row:
@@ -92,14 +97,66 @@ def get_twin(row, col):
         twincol = dotcol
     return (twinrow, twincol)
 
+def mirror_borders():
+    '''
+    Check every cell that has a known parent for borders and mirror them to the
+    cell's twin.
+    '''
+    while True:
+        previous = [row[:] for row in board]
+        for rownum in range(1, len(board)-1, 2):
+            for colnum in range(1, len(board[rownum])-1, 2):
+                if '/' in board[rownum][colnum] or 'o' in board[rownum][colnum]:
+                    [twinrow, twincol] = get_twin(rownum, colnum)
+                    if '-' in board[rownum-1][colnum]:
+                        board[twinrow+1][twincol] = '-----'
+                    if '-' in board[rownum+1][colnum]:
+                        board[twinrow-1][twincol] = '-----'
+                    if '|' in board[rownum][colnum-1]:
+                        board[twinrow][twincol+1] = '|'
+                    if '|' in board[rownum][colnum+1]:
+                        board[twinrow][twincol-1] = '|'
+        if previous == board:
+            break
+    return board
+
+def between_galaxies():
+    '''
+    Check every cell that has a known parent. If an adjacent cell has a different
+    known parent, places a border between the cells.
+    '''
+    for rownum in range(3, len(board)-3, 2):
+        for colnum in range(3, len(board[rownum])-3, 2):
+            if '/' in board[rownum][colnum]:
+                if '/' in board[rownum-2][colnum] and board[rownum-2][colnum] != board[rownum][colnum]:
+                    board[rownum-1][colnum] = '-----'
+                if '/' in board[rownum+2][colnum] and board[rownum+2][colnum] != board[rownum][colnum]:
+                    board[rownum+1][colnum] = '-----'
+                if '/' in board[rownum][colnum-2] and board[rownum][colnum-2] != board[rownum][colnum]:
+                    board[rownum][colnum-1] = '|'
+                if '/' in board[rownum][colnum+2] and board[rownum][colnum+2] != board[rownum][colnum]:
+                    board[rownum][colnum+1] = '|'
+            if 'o' in board[rownum][colnum]:
+                if '/' in board[rownum-2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum-2][colnum]:
+                    board[rownum-1][colnum] = '-----'
+                if '/' in board[rownum+2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum+2][colnum]:
+                    board[rownum+1][colnum] = '-----'
+                if '/' in board[rownum][colnum-2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum-2]:
+                    board[rownum][colnum-1] = '|'
+                if '/' in board[rownum][colnum+2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum+2]:
+                    board[rownum][colnum+1] = '|'
+    return board
+
 def main():
     global board
     board = import_text()
     print_table(board)
     board = initial_assignment(board)
     print_table(board)
-    print(get_twin(11, 9))
-    print(board)
+    board = between_galaxies()
+    print_table(board)
+    board = mirror_borders()
+    print_table(board)
 
 if __name__ == '__main__':
     main()
