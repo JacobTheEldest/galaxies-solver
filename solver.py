@@ -6,6 +6,28 @@ A tool to solve Galaxies puzzles as implemented by Simon Tatham's Collection.
 import os
 import pyperclip
 
+def startup(board, dotlist):
+    print('\n\nEmpty Puzzle')
+    print_table(board)
+    board = edge_dots(board)
+
+    for rownum in range(3, len(board)-1, 2):
+        for colnum in range(3, len(board[rownum])-1, 2):
+            board = between_galaxies(rownum, colnum)
+
+    while True:
+        previous = [row[:] for row in board]
+        for rownum in range(1, len(board)-1, 2):
+            for colnum in range(1, len(board[rownum])-1, 2):
+                board = mirror_twin(rownum, colnum)
+        if previous == board:
+            break
+
+    print('\n\nCompleted Startup')
+    print_table(board)
+    dotlist = curate_dotlist(dotlist)
+    print('Dotlist: {}\n'.format(dotlist))
+
 def import_text():
     '''
     Imports and cleans Galaxies board from clipboard.
@@ -23,7 +45,7 @@ def import_text():
         text[linenum] = list(text[linenum])
     return text
 
-def initial_assignment(board):
+def edge_dots(board):
     '''
     Assign cells to dots that are on the edges of each cell.
     '''
@@ -50,8 +72,7 @@ def print_table(table):
     for rownum in range(len(table)):
         for colnum in range(len(table[rownum])):
             if colnum%2 == 1:
-                for item in range(5-len(table[rownum][colnum])):
-                    table[rownum][colnum] += ' '
+                table[rownum][colnum] = pad(table[rownum][colnum])
     print('\n')
     for i in range(len(table[0])):
         if i%2==0:
@@ -68,17 +89,18 @@ def print_table(table):
     for rownum in range(len(table)):
         x = '  '.join(table[rownum])
         x = x.replace('-    ', '-----')
-        #x = x.replace('+    ', '+')
         print(str(rownum) + '\t' + x)
     print('\n')
     return
 
-def get_twin(row, col):
+def get_twin(row, col, dot=''):
     '''
     Returns a tuple of coordinates pointing to the 'twin' of the cell described
     by the input coordinates.
     '''
-    if '/' in board[row][col]:
+    if '/' in dot:
+        [dotrow, dotcol] = dot.split('/')
+    elif '/' in board[row][col]:
         [dotrow, dotcol] = board[row][col].split('/')
     else:
         [dotrow, dotcol] = [row, col]
@@ -96,67 +118,80 @@ def get_twin(row, col):
         twincol = dotcol-(col-dotcol)
     else:
         twincol = dotcol
-    return (twinrow, twincol)
+    return ('{}/{}'.format(twinrow, twincol))
 
-def mirror_borders():
+def mirror_twin(rownum, colnum):
     '''
-    Check every cell that has a known parent for borders and mirror them to the
-    cell's twin.
+    Mirror a cell to its twin.
     '''
-    while True:
-        previous = [row[:] for row in board]
-        for rownum in range(1, len(board)-1, 2):
-            for colnum in range(1, len(board[rownum])-1, 2):
-                if '/' in board[rownum][colnum] or 'o' in board[rownum][colnum]:
-                    [twinrow, twincol] = get_twin(rownum, colnum)
-                    if '-' in board[rownum-1][colnum]:
-                        board[twinrow+1][twincol] = '-----'
-                    if '-' in board[rownum+1][colnum]:
-                        board[twinrow-1][twincol] = '-----'
-                    if '|' in board[rownum][colnum-1]:
-                        board[twinrow][twincol+1] = '|'
-                    if '|' in board[rownum][colnum+1]:
-                        board[twinrow][twincol-1] = '|'
-        if previous == board:
-            break
+    rownum = int(rownum)
+    colnum = int(colnum)
+    if '/' in board[rownum][colnum] or 'o' in board[rownum][colnum]:
+        [twinrow, twincol] = get_twin(rownum, colnum).split('/')
+        twinrow = int(twinrow)
+        twincol = int(twincol)
+        board[twinrow][twincol] = board[rownum][colnum]
+        if '-' in board[rownum-1][colnum]:
+            board[twinrow+1][twincol] = '-----'
+            # print('Mirroring {}/{}'.format(rownum, colnum))
+            # print('Putting a border at {}/{}'.format(twinrow+1, twincol))
+        if '-' in board[rownum+1][colnum]:
+            board[twinrow-1][twincol] = '-----'
+            # print('Mirroring {}/{}'.format(rownum, colnum))
+            # print('Putting a border at {}/{}'.format(twinrow-1, twincol))
+        if '|' in board[rownum][colnum-1]:
+            board[twinrow][twincol+1] = '|'
+            # print('Mirroring {}/{}'.format(rownum, colnum))
+            # print('Putting a border at {}/{}'.format(twinrow, twincol+1))
+        if '|' in board[rownum][colnum+1]:
+            board[twinrow][twincol-1] = '|'
+            # print('Mirroring {}/{}'.format(rownum, colnum))
+            # print('Putting a border at {}/{}'.format(twinrow, twincol-1))
     return board
 
-def between_galaxies():
+def between_galaxies(rownum, colnum):
     '''
-    Check every cell that has a known parent. If an adjacent cell has a different
+    If an adjacent cell has a different
     known parent, places a border between the cells.
     '''
-    for rownum in range(3, len(board)-3, 2):
-        for colnum in range(3, len(board[rownum])-3, 2):
-            if '/' in board[rownum][colnum]:
-                if '/' in board[rownum-2][colnum] and board[rownum-2][colnum] != board[rownum][colnum]:
-                    board[rownum-1][colnum] = '-----'
-                if '/' in board[rownum+2][colnum] and board[rownum+2][colnum] != board[rownum][colnum]:
-                    board[rownum+1][colnum] = '-----'
-                if '/' in board[rownum][colnum-2] and board[rownum][colnum-2] != board[rownum][colnum]:
-                    board[rownum][colnum-1] = '|'
-                if '/' in board[rownum][colnum+2] and board[rownum][colnum+2] != board[rownum][colnum]:
-                    board[rownum][colnum+1] = '|'
-            if 'o' in board[rownum][colnum]:
-                if '/' in board[rownum-2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum-2][colnum]:
-                    board[rownum-1][colnum] = '-----'
-                if '/' in board[rownum+2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum+2][colnum]:
-                    board[rownum+1][colnum] = '-----'
-                if '/' in board[rownum][colnum-2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum-2]:
-                    board[rownum][colnum-1] = '|'
-                if '/' in board[rownum][colnum+2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum+2]:
-                    board[rownum][colnum+1] = '|'
+    rownum = int(rownum)
+    colnum = int(colnum)
+    #For nondot cells adjacent to nondot cells
+    if '/' in board[rownum][colnum]:
+        if rownum-2 > 0 and '/' in board[rownum-2][colnum] and board[rownum-2][colnum] != board[rownum][colnum]:
+            board[rownum-1][colnum] = '-----'
+            # print('Putting a border between {}/{} and {}/{}'.format(rownum-2, colnum, rownum, colnum))
+        if rownum+2 < len(board) and '/' in board[rownum+2][colnum] and board[rownum+2][colnum] != board[rownum][colnum]:
+            board[rownum+1][colnum] = '-----'
+            # print('top reads: {}     bottom reads: {}'.format(board[rownum+2][colnum], board[rownum][colnum]))
+            # print('Putting a border between {}/{} and {}/{}'.format(rownum+2, colnum, rownum, colnum))
+        if colnum-2 > 0 and '/' in board[rownum][colnum-2] and board[rownum][colnum-2] != board[rownum][colnum]:
+            board[rownum][colnum-1] = '|'
+            # print('Putting a border between {}/{} and {}/{}'.format(rownum, colnum-2, rownum, colnum))
+        if colnum+2 < len(board[rownum]) and '/' in board[rownum][colnum+2] and board[rownum][colnum+2] != board[rownum][colnum]:
+            board[rownum][colnum+1] = '|'
+            # print('Putting a border between {}/{} and {}/{}'.format(rownum, colnum+2, rownum, colnum))
+    #for dot cells...x
+    if 'o' in board[rownum][colnum]:
+        #adject to nondot cells
+        if rownum-2 > 0 and '/' in board[rownum-2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum-2][colnum]:
+            board[rownum-1][colnum] = '-----'
+        if rownum+2 < len(board) and '/' in board[rownum+2][colnum] and '{}/{}'.format(rownum, colnum) not in board[rownum+2][colnum]:
+            board[rownum+1][colnum] = '-----'
+        if colnum-2 > 0 and '/' in board[rownum][colnum-2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum-2]:
+            board[rownum][colnum-1] = '|'
+        if colnum+2 < len(board[rownum]) and '/' in board[rownum][colnum+2] and '{}/{}'.format(rownum, colnum) not in board[rownum][colnum+2]:
+            board[rownum][colnum+1] = '|'
+        #...adjacent to dot cells
+        if rownum-2 > 0 and 'o' in board[rownum-2][colnum]:
+            board[rownum-1][colnum] = '-----'
+        if rownum+2 < len(board) and 'o' in board[rownum+2][colnum]:
+            board[rownum+1][colnum] = '-----'
+        if colnum-2 > 0 and 'o' in board[rownum][colnum-2]:
+            board[rownum][colnum-1] = '|'
+        if colnum+2 < len(board[rownum]) and 'o' in board[rownum][colnum+2]:
+            board[rownum][colnum+1] = '|'
     return board
-
-def check_parents():
-    '''
-    Check every cell without a known parent. Check all potential dots for the
-    potential to be a parent. If there is only one option, label the cell.
-    '''
-    for rownum in range(1, len(board)-1, 2):
-        for colnum in range(1, len(board[rownum])-1, 2):
-            if board[rownum][colnum] == '     ':
-                continue
 
 def curate_dotlist(prevlist):
     '''
@@ -195,21 +230,185 @@ def curate_dotlist(prevlist):
                         continue
     return dotlist
 
+def adjacent_cells(rownum, colnum):
+    '''
+    input is a cell's coordinates.
+    output is a list of all valid adjacent cells.
+    '''
+    cells = ['{}/{}'.format(rownum, colnum)]
+    if rownum-2 > 0:
+        cells.append('{}/{}'.format(rownum-2, colnum))
+    if rownum+2 < len(board):
+        cells.append('{}/{}'.format(rownum+2, colnum))
+    if colnum-2 > 0:
+        cells.append('{}/{}'.format(rownum, colnum-2))
+    if colnum+2 < len(board[0]):
+        cells.append('{}/{}'.format(rownum, colnum+2))
+    return cells
+
+def adjacent_lines(rownum, colnum):
+    '''
+    input is a cell's coordinates.
+    output is a list of all adjacent lines.
+    '''
+    lines = []
+    if rownum-1 > 0:
+        lines.append('{}/{}'.format(rownum-1, colnum))
+    if rownum+1 < len(board)-1:
+        lines.append('{}/{}'.format(rownum+1, colnum))
+    if colnum-1 > 0:
+        lines.append('{}/{}'.format(rownum, colnum-1))
+    if colnum+1 < len(board[0])-1:
+        lines.append('{}/{}'.format(rownum, colnum+1))
+    return lines
+
+def update_cells(rownum, colnum):
+    '''
+    Updates routine aspects of each cell, its twin, and their adjacent cells.
+    Input: cell coordinates
+    Output: Updated board
+    '''
+    cells = []
+    [cells.append(x) for x in adjacent_cells(rownum, colnum)]
+    twin = get_twin(rownum, colnum)
+    [twinrow, twincol] = twin.split('/')
+    twinrow = int(twinrow)
+    twincol = int(twincol)
+    [cells.append(x) for x in adjacent_cells(twinrow, twincol)]
+    for cell in cells:
+        [cellrow, cellcol] = cell.split('/')
+        board = between_galaxies(cellrow, cellcol)
+        # print_table(board)
+        board = mirror_twin(cellrow, cellcol)
+    return board
+
+def pad(item, length=5):
+    '''
+    pads an input string up to 'length' chars.
+    '''
+    for char in range(length-len(item)):
+        item += ' '
+    return item
+
+def check_parents(board):
+    '''
+    Check every cell without a known parent. Check dotlist for the
+    potential parents. If there is only one option, label the cell.
+    '''
+    for rownum in range(1, len(board)-1, 2):
+        for colnum in range(1, len(board[rownum])-1, 2):
+            if board[rownum][colnum] == '     ':
+                parents = []
+                for dot in dotlist:
+                    twin = get_twin(rownum, colnum, dot)
+                    [twinrow, twincol] = twin.split('/')
+                    twinrow = int(twinrow)
+                    twincol = int(twincol)
+                    [dotrow, dotcol] = dot.split('/')
+                    dotrow = int(dotrow)
+                    dotcol = int(dotcol)
+                    invalid = False
+                    #Check if twin across dot would be outside board
+                    if twinrow >= len(board) or twinrow < 0:
+                        continue
+                    elif twincol >= len(board[rownum]) or twincol < 0:
+                        continue
+                    #Check if twin across dot contains another galaxy's dot
+                    if 'o' in board[twinrow][twincol]:
+                        continue
+                    #Check if twin across dot already belongs to a different galaxy
+                    if '/' in board[twinrow][twincol] and dot not in board[twinrow][twincol]:
+                        continue
+                    #Check if cell across border is already assigned to potential parent
+                    lines = []
+                    [lines.append(x) for x in adjacent_lines(rownum, colnum)]
+                    for line in lines:
+                        [linerow, linecol] = line.split('/')
+                        linerow = int(linerow)
+                        linecol = int(linecol)
+                        if '-' in board[linerow][linecol] or '|' in board[linerow][linecol]:
+                            adjcell = get_twin(rownum, colnum, line)
+                            [adjcellrow, adjcellcol] = adjcell.split('/')
+                            adjcellrow = int(adjcellrow)
+                            adjcellcol = int(adjcellcol)
+                            if dot in board[adjcellrow][adjcellcol]:
+                                invalid = True
+                    if invalid == True:
+                        continue
+
+                    #If no condition disqualifies the dot from being a parent
+                    #for the cell, add it to the list of potentials
+                    parents.append(dot)
+
+                if len(parents) == 1:
+                    board[rownum][colnum] = pad(parents[0])
+                    update_cells(rownum, colnum)
+                    # print('{}/{} belongs to {}'.format(rownum, colnum, parents[0]))
+                # print('{}/{}: {}'.format(rownum , colnum, parents))
+    return board
+
+def check_path(startrownum, startcolnum, dot=''):
+    '''
+    Returns a list of all cells and gridlines a given cell has a path to.
+    '''
+    return pathlist
+
+def assign_cells(board):
+    '''
+    Assigns cells using methods other than eliminating all but one dot.
+    '''
+    for rownum in range(1, len(board)-1, 2):
+        for colnum in range(1, len(board[rownum])-1, 2):
+            #Projects a cell out by one if it is bordered on 3 sides
+            if '/' in board[rownum][colnum]:
+                lines = adjacent_lines(rownum, colnum)
+                # print('{}/{} has lines: {}'.format(rownum, colnum, lines))
+                noline = []
+                for line in lines:
+                    [linerow, linecol] = line.split('/')
+                    linerow = int(linerow)
+                    linecol = int(linecol)
+                    if '-' not in board[linerow][linecol] and '|' not in board[linerow][linecol]:
+                        noline.append(line)
+                if len(noline) == 1:
+                    line = noline[0]
+                    twin = get_twin(rownum, colnum, line)
+                    [twinrow, twincol] = twin.split('/')
+                    twinrow = int(twinrow)
+                    twincol = int(twincol)
+                    board[twinrow][twincol] = board[rownum][colnum]
+                    update_cells(twinrow, twincol)
+
+                    # print('{}/{} belongs to {}'.format(twinrow, twincol, board[rownum][colnum]))
+    return board
+
 def main():
     global board
     global dotlist
-    dotlist = []
     board = import_text()
+    dotlist = []
+
+    startup(board, dotlist)
+
+    # while dotlist:
+    while True:
+        previous = [row[:] for row in board]
+        board = check_parents(board)
+        print_table(board)
+        dotlist = curate_dotlist(dotlist)
+        print('Dotlist: {}\n'.format(dotlist))
+
+        board = assign_cells(board)
+        print_table(board)
+        dotlist = curate_dotlist(dotlist)
+        print('Dotlist: {}\n'.format(dotlist))
+
+        if previous == board:
+            break
+
+    print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+    print('SOLVED!')
     print_table(board)
-    board = initial_assignment(board)
-    print_table(board)
-    board = between_galaxies()
-    print_table(board)
-    board = mirror_borders()
-    print_table(board)
-    print(dotlist)
-    dotlist = curate_dotlist(dotlist)
-    print(dotlist)
 
 if __name__ == '__main__':
     main()
